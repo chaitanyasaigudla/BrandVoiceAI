@@ -1,0 +1,425 @@
+// BrandVoice AI – Prisma Schema
+// PostgreSQL with pgvector for semantic memory
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User & Auth ──────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  passwordHash   String
+  avatarUrl      String?
+  isEmailVerified Boolean @default(false)
+  resetToken     String?
+  resetTokenExp  DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  memberships    OrganizationMember[]
+  sessions       Session[]
+  auditLogs      AuditLog[]
+  contentApprovals ContentApproval[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+// ─── Organization & Workspace ─────────────────────────────────────────────────
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logoUrl     String?
+  plan        String   @default("free")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     OrganizationMember[]
+  brands      Brand[]
+  campaigns   Campaign[]
+  auditLogs   AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String   @default("EDITOR") // OWNER | ADMIN | EDITOR | VIEWER
+  joinedAt       DateTime @default(now())
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("organization_members")
+}
+
+// ─── Brand ────────────────────────────────────────────────────────────────────
+
+model Brand {
+  id              String   @id @default(cuid())
+  name            String
+  websiteUrl      String?
+  industry        String?
+  description     String?  @db.Text
+  targetAudience  String?  @db.Text
+  productsServices String? @db.Text
+  logoUrl         String?
+  isActive        Boolean  @default(true)
+  organizationId  String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  guidelines      BrandGuideline[]
+  preferences     BrandPreference[]
+  vocabularies    BrandVocabulary[]
+  crawledPages    CrawledPage[]
+  content         Content[]
+  campaigns       Campaign[]
+  memoryRecords   MemoryRecord[]
+  consistencyReports ConsistencyReport[]
+  generationLogs  GenerationLog[]
+
+  @@index([organizationId])
+  @@map("brands")
+}
+
+model BrandGuideline {
+  id                 String   @id @default(cuid())
+  brandId            String
+  identity           String?  @db.Text
+  mission            String?  @db.Text
+  values             String?  @db.Text
+  personality        String?  @db.Text
+  toneOfVoice        String?  @db.Text
+  writingPrinciples  String?  @db.Text
+  preferredVocabulary String[] @default([])
+  prohibitedVocabulary String[] @default([])
+  messagingRules     String?  @db.Text
+  exampleContent     String?  @db.Text
+  isApproved         Boolean  @default(false)
+  approvedAt         DateTime?
+  version            Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  brand              Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@map("brand_guidelines")
+}
+
+model BrandPreference {
+  id                String   @id @default(cuid())
+  brandId           String
+  // Voice sliders (0-100)
+  professional      Int      @default(50)
+  friendly          Int      @default(50)
+  innovative        Int      @default(50)
+  simple            Int      @default(50)
+  persuasive        Int      @default(50)
+  emotional         Int      @default(50)
+  // Text preferences
+  preferredTone     String?
+  writingStyle      String?
+  sentenceLength    String?  @default("medium") // short | medium | long
+  emojiUsage        String?  @default("minimal") // none | minimal | moderate | heavy
+  ctaStyle          String?
+  writingComplexity String?  @default("moderate")
+  formality         String?  @default("semi-formal")
+  contentStructure  String?
+  updatedAt         DateTime @updatedAt
+
+  brand             Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId])
+  @@map("brand_preferences")
+}
+
+model BrandVocabulary {
+  id          String   @id @default(cuid())
+  brandId     String
+  word        String
+  type        String   // preferred | forbidden
+  replacement String?
+  context     String?
+  createdAt   DateTime @default(now())
+
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, type])
+  @@map("brand_vocabulary")
+}
+
+model CrawledPage {
+  id           String   @id @default(cuid())
+  brandId      String
+  url          String
+  title        String?
+  rawContent   String?  @db.Text
+  extractedInfo Json?
+  crawlStatus  String   @default("PENDING") // PENDING | RUNNING | COMPLETED | FAILED
+  crawledAt    DateTime?
+  error        String?
+  createdAt    DateTime @default(now())
+
+  brand        Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@map("crawled_pages")
+}
+
+// ─── Content ──────────────────────────────────────────────────────────────────
+
+model Content {
+  id               String   @id @default(cuid())
+  title            String?
+  content          String   @db.Text
+  platform         String   // ContentPlatform enum
+  contentType      String   // ContentType enum
+  status           String   @default("DRAFT") // ContentStatus enum
+  brandId          String
+  campaignId       String?
+  metadata         Json?
+  consistencyScore Float?
+  generationInputs Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  brand            Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  campaign         Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  versions         ContentVersion[]
+  feedbacks        ContentFeedback[]
+  approvals        ContentApproval[]
+  embeddings       ContentEmbedding[]
+  consistencyReports ConsistencyReport[]
+
+  @@index([brandId])
+  @@index([campaignId])
+  @@index([status])
+  @@index([platform])
+  @@map("content")
+}
+
+model ContentVersion {
+  id          String   @id @default(cuid())
+  contentId   String
+  version     Int
+  content     String   @db.Text
+  changeReason String?
+  changedBy   String?  // userId or 'ai'
+  origin      String   @default("manual") // manual | ai-generated
+  diff        String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  contentItem Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@index([contentId])
+  @@map("content_versions")
+}
+
+model ContentFeedback {
+  id          String   @id @default(cuid())
+  contentId   String
+  userId      String
+  type        String   // approval | rejection | correction | comment
+  feedback    String?  @db.Text
+  originalContent String? @db.Text
+  editedContent   String? @db.Text
+  createdAt   DateTime @default(now())
+
+  contentItem Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@index([contentId])
+  @@map("content_feedback")
+}
+
+model ContentApproval {
+  id          String   @id @default(cuid())
+  contentId   String
+  userId      String
+  action      String   // approved | rejected
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  contentItem Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([contentId])
+  @@map("content_approvals")
+}
+
+model ContentEmbedding {
+  id          String   @id @default(cuid())
+  contentId   String
+  embedding   String?  @db.Text // Stored as JSON string; replaced with vector(1536) in Phase 6
+  modelUsed   String?
+  createdAt   DateTime @default(now())
+
+  contentItem Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@index([contentId])
+  @@map("content_embeddings")
+}
+
+// ─── Memory ───────────────────────────────────────────────────────────────────
+
+model MemoryRecord {
+  id          String   @id @default(cuid())
+  brandId     String
+  type        String   // approved | rejected | preference | feedback | correction
+  content     String   @db.Text
+  platform    String?
+  contentType String?
+  metadata    Json?
+  embedding   String?  @db.Text // Stored as JSON string; replaced with vector(1536) in Phase 6
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, type])
+  @@map("memory_records")
+}
+
+// ─── Consistency ──────────────────────────────────────────────────────────────
+
+model ConsistencyReport {
+  id                   String   @id @default(cuid())
+  contentId            String?
+  brandId              String
+  inputContent         String   @db.Text
+  overallScore         Float
+  toneScore            Float
+  vocabularyScore      Float
+  writingStyleScore    Float
+  sentenceStructureScore Float
+  issues               Json     @default("[]")
+  suggestions          Json     @default("[]")
+  improvedContent      String?  @db.Text
+  improvedScore        Float?
+  createdAt            DateTime @default(now())
+
+  contentItem          Content? @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  brand                Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@index([contentId])
+  @@map("consistency_reports")
+}
+
+// ─── Campaign ─────────────────────────────────────────────────────────────────
+
+model Campaign {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?  @db.Text
+  objective      String?
+  targetAudience String?
+  brandId        String
+  organizationId String
+  startDate      DateTime?
+  endDate        DateTime?
+  isActive       Boolean  @default(true)
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  brand          Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  content        Content[]
+
+  @@index([brandId])
+  @@index([organizationId])
+  @@map("campaigns")
+}
+
+// ─── AI Observability ─────────────────────────────────────────────────────────
+
+model GenerationLog {
+  id            String   @id @default(cuid())
+  brandId       String
+  contentId     String?
+  platform      String?
+  contentType   String?
+  provider      String   // GROQ | GEMINI
+  model         String
+  tokensUsed    Int?
+  latencyMs     Int?
+  promptVersion String?
+  success       Boolean  @default(true)
+  error         String?
+  createdAt     DateTime @default(now())
+
+  brand         Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@map("generation_logs")
+}
+
+model AIProviderConfiguration {
+  id          String   @id @default(cuid())
+  provider    String   @unique // GROQ | GEMINI
+  model       String
+  isEnabled   Boolean  @default(true)
+  priority    Int      @default(1)
+  maxTokens   Int?
+  temperature Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ai_provider_configurations")
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  action         String
+  resourceType   String?
+  resourceId     String?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([action])
+  @@map("audit_logs")
+}

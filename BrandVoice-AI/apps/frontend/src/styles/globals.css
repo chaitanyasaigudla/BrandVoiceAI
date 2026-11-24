@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* Light mode */
+    --background:       0 0% 100%;
+    --foreground:       240 10% 3.9%;
+    --card:             0 0% 100%;
+    --card-foreground:  240 10% 3.9%;
+    --popover:          0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary:          270 76% 57%;     /* Electric violet */
+    --primary-foreground: 0 0% 98%;
+    --secondary:        240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted:            240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent:           240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive:      0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border:           240 5.9% 90%;
+    --input:            240 5.9% 90%;
+    --ring:             270 76% 57%;
+    --radius:           0.625rem;
+
+    /* Chart colors */
+    --chart-1:  270 76% 57%;
+    --chart-2:  217 91% 60%;
+    --chart-3:  160 84% 39%;
+    --chart-4:  43 96% 56%;
+    --chart-5:   0 84% 60%;
+
+    /* Sidebar */
+    --sidebar-background:  0 0% 98%;
+    --sidebar-foreground:  240 5.3% 26.1%;
+    --sidebar-primary:     270 76% 57%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent:      240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border:      220 13% 91%;
+    --sidebar-ring:        270 76% 57%;
+  }
+
+  .dark {
+    /* Dark mode – sleek obsidian slate-indigo */
+    --background:       228 24% 9%;      /* #0f121d */
+    --foreground:       214 32% 93%;     /* #e8edf6 */
+    --card:             228 20% 13%;     /* #191c2b */
+    --card-foreground:  214 32% 93%;
+    --popover:          228 20% 14%;
+    --popover-foreground: 214 32% 93%;
+    --primary:          270 76% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary:        228 16% 18%;
+    --secondary-foreground: 214 32% 93%;
+    --muted:            228 16% 17%;
+    --muted-foreground: 218 16% 62%;
+    --accent:           228 16% 18%;
+    --accent-foreground: 214 32% 93%;
+    --destructive:      0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border:           228 16% 20%;     /* #2b2f42 */
+    --input:            228 16% 20%;
+    --ring:             270 76% 65%;
+
+    /* Chart colors – brighter in dark mode */
+    --chart-1:  270 76% 65%;
+    --chart-2:  217 91% 65%;
+    --chart-3:  160 84% 44%;
+    --chart-4:  43 96% 60%;
+    --chart-5:   0 84% 65%;
+
+    /* Sidebar */
+    --sidebar-background:  228 25% 8%;   /* #0d101a */
+    --sidebar-foreground:  214 24% 82%;
+    --sidebar-primary:     270 76% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent:      228 16% 16%;
+    --sidebar-accent-foreground: 214 32% 93%;
+    --sidebar-border:      228 16% 18%;
+    --sidebar-ring:        270 76% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  /* Scrollbar styles */
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
+
+/* ─── Utility Classes ────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Glass morphism */
+  .glass {
+    @apply backdrop-blur-md bg-white/5 border border-white/10;
+  }
+  .glass-dark {
+    @apply backdrop-blur-md bg-black/20 border border-white/10;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-400 via-brand-500 to-blue-500 bg-clip-text text-transparent;
+  }
+
+  /* Brand glow effect */
+  .brand-glow {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+
+  /* Card hover effect */
+  .card-interactive {
+    @apply transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply bg-muted animate-pulse rounded-md;
+  }
+
+  /* Score ring color classes */
+  .score-excellent { @apply text-success-500; }
+  .score-good      { @apply text-blue-500; }
+  .score-fair      { @apply text-warning-500; }
+  .score-poor      { @apply text-danger-500; }
+
+  /* Sidebar item active */
+  .sidebar-item-active {
+    @apply bg-primary/10 text-primary font-medium;
+  }
+}
+
+/* ─── Component Overrides ────────────────────────────────────────────────────── */
+@layer components {
+  /* Consistent focus ring */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Content editor */
+  .content-editor {
+    @apply w-full min-h-[200px] p-4 rounded-lg border bg-background text-foreground
+           placeholder:text-muted-foreground resize-none
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+           font-mono text-sm leading-relaxed;
+  }
+}
